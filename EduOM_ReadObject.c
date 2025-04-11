@@ -98,8 +98,10 @@ Four EduOM_ReadObject(
     Object	*obj;		/* pointer to the object in the slotted page */
     Four	offset;		/* offset of the object in the page */
 
-    
-    
+    if (!oid) ERR(eBADOBJECTID_OM);
+    if (length < 0 && length != REMAINDER) ERR(eBADLENGTH_OM);
+    if (!buf) ERR(eBADUSERBUF_OM);
+
     /*@ check parameters */
 
     if (oid == NULL) ERR(eBADOBJECTID_OM);
@@ -108,7 +110,33 @@ Four EduOM_ReadObject(
     
     if (buf == NULL) ERR(eBADUSERBUF_OM);
 
-    
+    e = BfM_GetTrain((TrainID*)oid, (char**)&apage, PAGE_BUF);
+    if (e < 0) ERR(e);
+
+    pid.pageNo = oid->pageNo;
+    pid.volNo = oid->volNo;
+
+    if ((oid->slotNo >= apage->header.nSlots) ||
+        apage->slot[-oid->slotNo].offset == EMPTYSLOT){
+        BfM_FreeTrain(&pid, PAGE_BUF);
+        ERR(eBADOBJECTID_OM);
+    }
+    obj = apage->data + apage->slot[-oid->slotNo].offset;
+
+    if (start > obj->header.length){
+        BfM_FreeTrain(&pid, PAGE_BUF);
+        ERR(eBADSTART_OM);
+    }
+
+    if (length == REMAINDER){
+        length = obj->header.length - start;
+    }else if(length < 0 || start + length > obj->header.length){
+        BfM_FreeTrain(&pid, PAGE_BUF);
+        ERR(eBADLENGTH_OM);
+    }
+
+    memcpy(buf, obj + sizeof(ObjectHdr) + start, length);
+    BfM_FreeTrain(&pid, PAGE_BUF);
 
     return(length);
     

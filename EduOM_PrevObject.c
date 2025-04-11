@@ -33,6 +33,7 @@
  */
 
 
+#include <string.h>
 #include "EduOM_common.h"
 #include "BfM.h"
 #include "EduOM_Internal.h"
@@ -87,8 +88,43 @@ Four EduOM_PrevObject(
     
     if (prevOID == NULL) ERR(eBADOBJECTID_OM);
 
-    
+    if (e = BfM_GetTrain((TrainID*)catObjForFile, (char**)&catPage, PAGE_BUF) < 0) ERR(e);
+    catEntry = (sm_CatOverlayForData*)(catPage->data + catPage->slot[-catObjForFile->slotNo].offset);
+    if (!curOID){
+        pid.volNo = catEntry->fid.volNo;
+        pid.pageNo = catEntry->lastPage;
+    }
+    else {
+        pid.volNo = curOID->volNo;
+        pid.pageNo = curOID->pageNo;
+    }
 
-    return(EOS);
+    while(1){
+        if (e = BfM_GetTrain(&pid, (char**)&apage, PAGE_BUF < 0)) ERRB1(e, &pid, PAGE_BUF);
+        Two startSlot = (curOID) ? (curOID->slotNo - 1) : (apage->header.nSlots - 1);
+        for (i = startSlot; i >= 0; i--){
+            if(apage->slot[-i].offset == EMPTYSLOT) continue;
+
+            prevOID->pageNo = pid.pageNo;
+            prevOID->volNo = pid.volNo;
+            prevOID->slotNo = i;
+            prevOID->unique = apage->slot[-i].unique;
+
+            if (objHdr) {
+                ObjectHdr *hdr = (ObjectHdr*)(apage->data + apage->slot[-i].offset);
+                memcpy(objHdr, hdr, sizeof(ObjectHdr));
+            }
+
+            if (pid.pageNo == catEntry->firstPage) {
+                BfM_FreeTrain((TrainID *) catObjForFile, PAGE_BUF);
+                return (EOS);
+            }
+
+            PageNo prevPage = apage->header.prevPage;
+            BfM_FreeTrain(&pid, PAGE_BUF);
+            pid.pageNo = prevPage;
+            curOID = NULL;
+        }
+    }
     
 } /* EduOM_PrevObject() */

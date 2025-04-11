@@ -36,7 +36,7 @@
  */
 /* Interface Function Prototypes */
 Four EduOM_CompactPage(SlottedPage*, Two);
-Four EduOM_CreateObject(ObjectID*, ObjectID*, ObjectHdr*, Four, void*, ObjectID*);
+Four EduOM_CreateObject(ObjectID*, ObjectID*, ObjectHdr*, Four, char*, ObjectID*);
 Four EduOM_DestroyObject(ObjectID*, ObjectID*, Pool*, DeallocListElem*);
 Four EduOM_NextObject(ObjectID*, ObjectID*, ObjectID*, ObjectHdr*);
 Four EduOM_PrevObject(ObjectID*, ObjectID*, ObjectID*, ObjectHdr*);

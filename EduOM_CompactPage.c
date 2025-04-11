@@ -87,8 +87,46 @@ Four EduOM_CompactPage(
     Two    lastSlot;		/* last non empty slot */
     Two    i;			/* index variable */
 
-    
+    // Backup the original page to avoid overlap
+    memcpy(&tpage, apage, PAGESIZE);
+
+    // Initialize compaction starting point
+    apageDataOffset = 0;
+    lastSlot = 0;
+
+    // If slotNo is specified, save its object
+    Object *objTarget = NULL;
+    Four lenTarget = 0;
+    if (slotNo != NIL) {
+        objTarget = tpage.data + tpage.slot[-slotNo].offset;
+        lenTarget = sizeof(ObjectHdr) + ALIGNED_LENGTH(objTarget->header.length);
+    }
+
+    // Compact non-target objects
+    for (i = 0; i < tpage.header.nSlots; i++) {
+        if (i == slotNo) continue;
+        if (tpage.slot[-i].offset == EMPTYSLOT) continue;
+
+        obj = tpage.data + tpage.slot[-i].offset;
+        len = sizeof(ObjectHdr) + ALIGNED_LENGTH(obj->header.length);
+
+        // Copy to new position
+        memcpy(apage->data + apageDataOffset, obj, len);
+        apage->slot[-i].offset = apageDataOffset;
+        apageDataOffset += len;
+        lastSlot++;
+    }
+
+    // Append target object to the end (if specified)
+    if (slotNo != NIL && objTarget) {
+        memcpy(apage->data + apageDataOffset, objTarget, lenTarget);
+        apage->slot[-slotNo].offset = apageDataOffset;
+        apageDataOffset += lenTarget;
+    }
+
+    // Update header fields
+    apage->header.free = apageDataOffset;
+    apage->header.unused = 0;
 
     return(eNOERROR);
-    
-} /* EduOM_CompactPage */
+}
